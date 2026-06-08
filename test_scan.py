@@ -1,20 +1,16 @@
 """
-test_scan.py – Quick scan test (temporary debug file)
+test_scan.py – Quick scan test with channel hopping (temporary debug file)
 """
-from scapy.all import sniff, Dot11Beacon
+from scanner import scan_networks, set_monitor_mode
 
-found = []
+IFACE = 'wlxe84e06aed7c4'
 
-def handle(p):
-    if p.haslayer(Dot11Beacon):
-        try:
-            ssid = p.info.decode('utf-8', errors='replace').strip()
-        except Exception:
-            ssid = "<unknown>"
-        if ssid not in found:
-            found.append(ssid)
-            print(f"[+] Found: {ssid}")
+print(f"[*] Setting {IFACE} to monitor mode...")
+set_monitor_mode(IFACE)
 
-print("[*] Scanning for 15 seconds on wlxe84e06aed7c4...")
-sniff(iface='wlxe84e06aed7c4', prn=handle, timeout=15, store=False)
-print(f"\n[*] Total networks found: {len(found)}")
+print(f"[*] Scanning for 30 seconds with channel hopping (2.4GHz + 5GHz)...")
+networks = scan_networks(IFACE, duration=30)
+
+print(f"\n[*] Total networks found: {len(networks)}")
+for n in networks:
+    print(f"  {n.ssid:30s} {n.bssid}  ch={n.channel}  {n.rssi}dBm  {n.security}")
