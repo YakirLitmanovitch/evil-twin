@@ -1,56 +1,53 @@
 """
-test_scan.py – Debug: what does Scapy actually see?
+test_scan.py – Lock on channel 165 (5825MHz) and listen for Beacons
 """
 import subprocess
-import time
-import threading
-from scapy.all import sniff, Dot11, Dot11Beacon, RadioTap
+from scapy.all import sniff, Dot11, Dot11Beacon, Dot11Elt, RadioTap
 
 IFACE = 'wlxe84e06aed7c4'
 
-# 2.4GHz + 5GHz channels
-CHANNELS = list(range(1, 14)) + [36, 40, 44, 48, 52, 56, 60, 64,
-                                   100, 104, 108, 112, 116, 132, 136,
-                                   140, 149, 153, 157, 161, 165]
+# Lock to channel 165 (5825 MHz) - where we saw traffic in tcpdump
+subprocess.run(["iw", "dev", IFACE, "set", "channel", "165"],
+               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print(f"[*] Locked to channel 165 (5825 MHz)")
 
-stop = threading.Event()
-counts = {"total": 0, "dot11": 0, "beacon": 0}
-
-def hopper():
-    idx = 0
-    while not stop.is_set():
-        ch = CHANNELS[idx % len(CHANNELS)]
-        subprocess.run(["iw", "dev", IFACE, "set", "channel", str(ch)],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        idx += 1
-        time.sleep(0.2)
+networks = {}
 
 def handle(p):
-    counts["total"] += 1
-    if p.haslayer(Dot11):
-        counts["dot11"] += 1
-        dot11 = p[Dot11]
-        # Print first 20 Dot11 frames to see what types we get
-        if counts["dot11"] <= 20:
-            print(f"  Dot11 type={dot11.type} subtype={dot11.subtype} "
-                  f"addr1={dot11.addr1} addr2={dot11.addr2}")
-    if p.haslayer(Dot11Beacon):
-        counts["beacon"] += 1
-        try:
-            ssid = p[Dot11].payload.payload.info.decode('utf-8', errors='replace')
-            print(f"  [BEACON] SSID={ssid}")
-        except Exception as e:
-            print(f"  [BEACON] parse error: {e}")
+    if not p.haslayer(Dot11):
+        return
 
-print(f"[*] Starting channel hopper...")
-t = threading.Thread(target=hopper, daemon=True)
-t.start()
+    dot11 = p[Dot11]
 
-print(f"[*] Sniffing for 20 seconds...")
-sniff(iface=IFACE, prn=handle, timeout=20, store=False)
-stop.set()
+    # Beacon = type 0 subtype 8
+    if dot11.type == 0 and dot11.subtype == 8:
+        bssid = dot11.addr3
+        if bssid not in networks:
+            try:
+                ssid = p[Dot11Elt].info.decode('utf-8', errors='replace').strip()
+            except Exception:
+                ssid = "<hidden>"
+            try:
+                rssi = p[RadioTap].dBm_AntSignal
+            except Exception:
+                rssi = -999
+            networks[bssid] = ssid
+            print(f"  [BEACON] SSID={ssid:30s} BSSID={bssid}  RSSI={rssi}dBm")
 
-print(f"\n[*] Results:")
-print(f"    Total packets : {counts['total']}")
-print(f"    Dot11 packets : {counts['dot11']}")
-print(f"    Beacon frames : {counts['beacon']}")
+    # Also print Probe Responses (type=0 subtype=5) - contain SSID too
+    elif dot11.type == 0 and dot11.subtype == 5:
+        bssid = dot11.addr3
+        if bssid not in networks:
+            try:
+                ssid = p[Dot11Elt].info.decode('utf-8', errors='replace').strip()
+                networks[bssid] = ssid
+                print(f"  [PROBE RESP] SSID={ssid:30s} BSSID={bssid}")
+            except Exception:
+                pass
+
+print(f"[*] Listening for 30 seconds...")
+sniff(iface=IFACE, prn=handle, timeout=30, store=False)
+
+print(f"\n[*] Total networks found: {len(networks)}")
+for bssid, ssid in networks.items():
+    print(f"    {ssid:30s} {bssid}")
