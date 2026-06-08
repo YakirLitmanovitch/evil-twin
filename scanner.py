@@ -73,19 +73,30 @@ def _get_channel(packet) -> int:
 
 
 # ──────────────────────────────────────────────
-# Channel hopper – jumps across all 13 channels
+# Channel hopper – jumps across 2.4GHz AND 5GHz
 # so we don't miss networks on other channels
 # ──────────────────────────────────────────────
 
+# 2.4GHz channels 1-13 + common 5GHz channels
+ALL_CHANNELS = (
+    list(range(1, 14)) +          # 2.4 GHz
+    [36, 40, 44, 48,              # 5 GHz UNII-1
+     52, 56, 60, 64,              # 5 GHz UNII-2
+     100, 104, 108, 112, 116,     # 5 GHz UNII-2e
+     132, 136, 140, 144,
+     149, 153, 157, 161, 165]     # 5 GHz UNII-3
+)
+
 def _channel_hopper(iface: str, stop_event: threading.Event):
     """
-    Continuously cycle through WiFi channels 1–13.
-    This ensures Beacons from all channels are captured during the scan.
+    Continuously cycle through 2.4GHz and 5GHz channels.
+    This ensures Beacons from all bands are captured during the scan.
     """
-    ch = 1
+    import subprocess
+    idx = 0
     while not stop_event.is_set():
+        ch = ALL_CHANNELS[idx % len(ALL_CHANNELS)]
         try:
-            import subprocess
             subprocess.run(
                 ["iw", "dev", iface, "set", "channel", str(ch)],
                 stdout=subprocess.DEVNULL,
@@ -93,8 +104,8 @@ def _channel_hopper(iface: str, stop_event: threading.Event):
             )
         except Exception:
             pass
-        ch = (ch % 13) + 1      # Cycle 1 → 2 → ... → 13 → 1
-        time.sleep(0.25)        # Dwell 250 ms per channel
+        idx += 1
+        time.sleep(0.2)         # Dwell 200 ms per channel
 
 
 # ──────────────────────────────────────────────
