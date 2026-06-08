@@ -76,21 +76,34 @@ BANNER = f"""
 # ──────────────────────────────────────────────
 
 def get_wireless_interfaces() -> list[str]:
-    """Return list of wireless interface names from /proc/net/wireless."""
+    """Return list of wireless interface names using 'iw dev' and 'ip link'."""
+    ifaces = []
+
+    # Method 1: iw dev (shows all wireless interfaces including dormant ones)
     try:
-        with open("/proc/net/wireless") as f:
-            lines = f.readlines()[2:]   # Skip header rows
-        ifaces = [line.split(":")[0].strip() for line in lines if ":" in line]
-        return ifaces
+        out = subprocess.check_output(["iw", "dev"], text=True)
+        ifaces = [line.split()[-1] for line in out.splitlines()
+                  if "Interface" in line]
     except Exception:
-        # Fallback: use iw dev
+        pass
+
+    # Method 2: fallback – scan ip link for wlan*/wlx* interfaces
+    if not ifaces:
         try:
-            out = subprocess.check_output(["iw", "dev"], text=True)
-            ifaces = [line.split()[-1] for line in out.splitlines()
-                      if "Interface" in line]
-            return ifaces
+            out = subprocess.check_output(["ip", "link", "show"], text=True)
+            for line in out.splitlines():
+                for prefix in ("wlan", "wlx", "wlp", "wls"):
+                    if prefix in line:
+                        # Extract interface name (format: "4: wlxABC: <FLAGS>")
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            name = parts[1].strip().split("@")[0]
+                            if name not in ifaces:
+                                ifaces.append(name)
         except Exception:
-            return []
+            pass
+
+    return ifaces
 
 
 def select_interface(prompt: str, ifaces: list[str]) -> str:
