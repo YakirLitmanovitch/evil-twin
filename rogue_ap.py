@@ -94,10 +94,6 @@ server={AP_IP}
 # DNS hijack: resolve everything to our AP
 address=/#/{AP_IP}
 
-# Logging
-log-queries
-log-facility=/tmp/evil_twin_dnsmasq.log
-
 no-resolv
 no-hosts
 """
