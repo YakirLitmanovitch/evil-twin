@@ -1,48 +1,22 @@
 """
-test_scan.py – Set monitor mode, capture with tcpdump, read with Scapy
+test_scan.py – Test scanner with channel 36 (where Beacons were found)
 """
+from scanner import scan_networks, set_monitor_mode
 import subprocess
-import time
-from scapy.all import rdpcap, Dot11Beacon, Dot11Elt, RadioTap
 
 IFACE = 'wlxe84e06aed7c4'
-PCAP  = '/tmp/capture.pcap'
 
-# Step 1: Set monitor mode
-print("[*] Setting monitor mode...")
-subprocess.run(["ip",  "link", "set", IFACE, "down"],  check=True)
-subprocess.run(["iw",  "dev",  IFACE, "set", "type", "monitor"], check=True)
-subprocess.run(["ip",  "link", "set", IFACE, "up"],    check=True)
-print("[+] Monitor mode set")
+print(f"[*] Setting monitor mode on {IFACE}...")
+set_monitor_mode(IFACE)
 
-# Step 2: Capture 20 seconds with tcpdump (no channel lock – let it stay where it is)
-print("[*] Capturing with tcpdump for 20 seconds...")
-proc = subprocess.Popen(
-    ["tcpdump", "-i", IFACE, "-w", PCAP],
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL
-)
-time.sleep(20)
-proc.terminate()
-proc.wait()
-print(f"[+] Capture done.")
+# Lock to channel 36 where we know there are Beacons
+subprocess.run(["iw", "dev", IFACE, "set", "channel", "36"],
+               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print("[*] Locked to channel 36 (5180 MHz)")
 
-# Step 3: Read with Scapy
-pkts = rdpcap(PCAP)
-print(f"[*] Total packets in file: {len(pkts)}")
+print("[*] Scanning for 30 seconds...")
+networks = scan_networks(IFACE, duration=30)
 
-beacons = 0
-for p in pkts:
-    if p.haslayer(Dot11Beacon):
-        beacons += 1
-        try:
-            ssid = p[Dot11Elt].info.decode('utf-8', errors='replace').strip()
-            try:
-                rssi = p[RadioTap].dBm_AntSignal
-            except Exception:
-                rssi = -999
-            print(f"  [BEACON] {ssid}  rssi={rssi}dBm")
-        except Exception as e:
-            print(f"  [BEACON] parse error: {e}")
-
-print(f"\n[*] Beacon frames found: {beacons}")
+print(f"\n[*] Total networks found: {len(networks)}")
+for n in networks:
+    print(f"  {n.ssid:30s} {n.bssid}  ch={n.channel}  {n.rssi}dBm  {n.security}")

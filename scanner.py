@@ -105,7 +105,7 @@ def _channel_hopper(iface: str, stop_event: threading.Event):
         except Exception:
             pass
         idx += 1
-        time.sleep(0.2)         # Dwell 200 ms per channel
+        time.sleep(1.0)         # Dwell 1 second per channel – enough to catch Beacons
 
 
 # ──────────────────────────────────────────────
