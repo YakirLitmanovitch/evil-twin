@@ -241,7 +241,8 @@ class RogueAP:
         time.sleep(1)
 
         if self._dnsmasq.poll() is not None:
-            raise RuntimeError("[!] dnsmasq failed to start. Check config.")
+            err = self._dnsmasq.stderr.read().decode(errors="replace")
+            raise RuntimeError(f"[!] dnsmasq failed to start.\n{err}")
 
         print(f"[+] dnsmasq running (PID {self._dnsmasq.pid})")
 
