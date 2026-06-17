@@ -92,7 +92,7 @@ class DeauthAttack:
     """
 
     def __init__(self, iface: str, client_mac: str, ap_bssid: str,
-                 burst: int = 5, interval: float = 0.1):
+                 burst: int = 64, interval: float = 0.0):
         """
         Args:
             iface:       Monitor-mode interface with packet injection support
