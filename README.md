@@ -7,8 +7,8 @@ Ariel University | Course #2-7038910-1
 
 ## Group Details
 
-- **Student 1:** Yakir
-- **Student 2:** Noa
+- **Student 1:** Yakir Litmanovitch
+- **Student 2:** Noa Agassi
 
 ---
 
@@ -124,18 +124,20 @@ evil_twin/
 ├── defense/
 │   └── detector.py          # Defense tool
 ├── requirements.txt
-└── README.md
+├── README.md
+└── Evil_Twin_Report.docx    # Assignment report
 ```
 
 ---
 
 ## Known Limitations
 
-1. **Two interfaces recommended** – using a single interface for both sniffing and AP is possible but degrades scan quality.
+1. **Two interfaces recommended** – using a single interface for both sniffing and AP is possible but degrades scan quality. Deauth is automatically disabled in single-interface mode.
 2. **2.4GHz only** – hostapd is configured with `hw_mode=g`. 5GHz requires `hw_mode=a` and a compatible adapter.
-3. **WPA3 networks** – Deauth attacks are mitigated by PMF (Protected Management Frames / 802.11w). This tool targets WPA2 and below.
-4. **NetworkManager conflicts** – NetworkManager may try to reconfigure the interface. Disable it before running.
-5. **DragonOS** – Tested and intended for DragonOS / Kali Linux / Ubuntu 22+.
+3. **PMF / 802.11w** – Deauth attacks are mitigated by Protected Management Frames. This tool targets WPA2 networks without PMF enforced. If PMF is enabled on the router, manual victim disconnection is required.
+4. **MAC Randomization** – Android 10+ and iOS 14+ randomize MAC addresses per network by default. Disable per-network MAC randomization on the victim device for reliable client identification.
+5. **NetworkManager conflicts** – NetworkManager may try to reconfigure the interface. Disable it before running.
+6. **Tested on** – DragonOS / Kali Linux / Ubuntu 22+.
 
 ---
 
