@@ -36,6 +36,20 @@ class Client:
 # Broadcast / multicast addresses to ignore
 _IGNORE = {"FF:FF:FF:FF:FF:FF", "00:00:00:00:00:00"}
 
+
+def _is_multicast(mac: str) -> bool:
+    """
+    In 802.11, a MAC is multicast/broadcast if the LSB of the first byte is 1.
+    Examples: 33:33:xx (IPv6 multicast), 01:00:5E:xx (IPv4 multicast),
+              01:80:C2:xx (STP), FF:FF:FF:FF:FF:FF (broadcast).
+    These are never real client devices.
+    """
+    try:
+        first_byte = int(mac.split(":")[0], 16)
+        return bool(first_byte & 0x01)
+    except Exception:
+        return False
+
 def _handle_packet(packet, target_bssid: str, clients: dict):
     """
     Called by Scapy for every sniffed packet.
@@ -81,7 +95,7 @@ def _handle_packet(packet, target_bssid: str, clients: dict):
     elif addr2 == bssid:
         candidate = addr1 if addr1 not in _IGNORE else None
 
-    if candidate is None or candidate in _IGNORE:
+    if candidate is None or candidate in _IGNORE or _is_multicast(candidate):
         return
 
     # Update or create client entry
