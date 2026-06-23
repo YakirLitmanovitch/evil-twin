@@ -125,7 +125,8 @@ class CaptivePortal:
                 host=self.host,
                 port=self.port,
                 debug=False,
-                use_reloader=False    # Must be False when running in a thread
+                use_reloader=False,   # Must be False when running in a thread
+                threaded=True         # Handle multiple concurrent requests (phone sends several at once)
             ),
             daemon=True
         )
