@@ -95,7 +95,7 @@ def _handle_packet(packet, target_bssid: str, clients: dict):
     elif addr2 == bssid:
         candidate = addr1 if addr1 not in _IGNORE else None
 
-    if candidate is None or candidate in _IGNORE or _is_multicast(candidate):
+    if not candidate or candidate in _IGNORE or _is_multicast(candidate):
         return
 
     # Update or create client entry
